@@ -1,0 +1,48 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: $CI_PROJECT_NAME-config
+data:
+  PORT: "8080"
+  WS_PROVIDER: "$WS_PROVIDER"
+  PARACHAIN_IDS: "$PARACHAIN_IDS"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $CI_PROJECT_NAME
+  labels:
+    app: $CI_PROJECT_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $CI_PROJECT_NAME
+  template:
+    metadata:
+      labels:
+        app: $CI_PROJECT_NAME
+    spec:
+      containers:
+        envFrom:
+          - configMapRef:
+              name: $CI_PROJECT_NAME-config
+        image: "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
+        name: $CI_PROJECT_NAME
+        ports:
+        - containerPort: 8080
+          name: exporter
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: exporter
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "10m"
+          limits:
+            memory: "1Gi"
+            cpu: "250m"

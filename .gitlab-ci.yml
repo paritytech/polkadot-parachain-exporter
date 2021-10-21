@@ -1,0 +1,120 @@
+variables:
+  CONTAINER_REPO:             "docker.io/paritytech/polkadot-parachain-exporter"
+  DOCKERFILE_DIRECTORY:       "./"
+  VAULT_SERVER_URL:           "https://vault.parity-mgmt-vault.parity.io"
+  VAULT_AUTH_PATH:            "gitlab-parity-io-jwt"
+  VAULT_AUTH_ROLE:            "cicd_gitlab_parity_${CI_PROJECT_NAME}"
+
+  # Manual Variables (Optional)
+  ## Could be used in the web console when triggering the pipeline manually
+  ## DO NOT SET THEM IN THIS FILE!! They've been mentioned here only for documentation purposes!
+  # FORCE_DEPLOY:               ""       # boolean: true or false - triggers the deploy-kusama and deploy-polkadot stage
+  # FORCE_DOCKER_TAG:           ""       # choose an existing docker tag to be deployed (e.g. v1.2.3)
+
+default:
+  before_script:
+    - |-
+      echo defining DOCKER_IMAGE_TAG variable
+      if [[ $FORCE_DOCKER_TAG ]]; then
+        export DOCKER_IMAGE_TAG="${FORCE_DOCKER_TAG}"
+      elif [[ $CI_COMMIT_TAG =~ ^v[0-9]+\.[0-9]+.*$ ]]; then
+        export DOCKER_IMAGE_TAG="${CI_COMMIT_TAG}"
+        export BUILD_LATEST_IMAGE="true"
+      else
+        export DOCKER_IMAGE_TAG="${CI_COMMIT_SHORT_SHA}-beta"
+      fi
+
+stages:
+  - build
+  - deploy-westend
+  - deploy-kusama
+  - deploy-polkadot
+
+# Pipeline Job Templates:
+.dockerize:               &dockerize
+  stage:                  build
+  image:                  quay.io/buildah/stable
+  secrets:
+    DOCKER_HUB_USER:
+      vault:             cicd/gitlab/parity/DOCKER_HUB_USER@kv
+      file:              false
+    DOCKER_HUB_PASS:
+      vault:             cicd/gitlab/parity/DOCKER_HUB_PASS@kv
+      file:              false
+  script:
+    - |-
+      echo building "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
+      if [[ $BUILD_LATEST_IMAGE ]]; then
+        buildah bud \
+        --format=docker \
+        --tag "$CONTAINER_REPO:$DOCKER_IMAGE_TAG" \
+        --tag "$CONTAINER_REPO:latest" "$DOCKERFILE_DIRECTORY"
+      else
+        buildah bud \
+        --format=docker \
+        --tag "$CONTAINER_REPO:$DOCKER_IMAGE_TAG" "$DOCKERFILE_DIRECTORY"
+      fi
+    - echo ${DOCKER_HUB_PASS} |
+      buildah login --username ${DOCKER_HUB_USER} --password-stdin docker.io
+    - |-
+      echo pushing "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
+      if [[ $BUILD_LATEST_IMAGE ]]; then
+        buildah push --format=v2s2 "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
+        buildah push --format=v2s2 "$CONTAINER_REPO:latest"
+      else
+        buildah push --format=v2s2 "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
+      fi
+  rules:
+    - if: '$FORCE_DOCKER_TAG'
+      when: never
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'         # i.e. v1.0, v2.1rc1
+      when: always
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: always
+  tags:
+    - kubernetes-parity-build
+
+.deploy:                  &deploy
+  image:                  paritytech/kubetools:3.5.3
+  script:
+    - "kubectl create namespace $KUBE_NAMESPACE || true"
+    - "cat ./kubernetes/deployment.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
+    - "kubectl wait -n $KUBE_NAMESPACE --for=condition=available --timeout=60s deployment/$CI_PROJECT_NAME"
+  tags:
+    - kubernetes-parity-build
+
+
+# Pipeline Jobs:
+build:
+  <<:                     *dockerize
+
+deploy-westend:
+  <<:                     *deploy
+  stage:                  deploy-westend
+  environment:
+    name:                 parity-testnet
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'       # i.e. v1.0, v2.1rc1
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+deploy-kusama:
+  <<:                     *deploy
+  stage:                  deploy-kusama
+  environment:
+    name:                 parity-chains-kusama
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'       # i.e. v1.0, v2.1rc1
+      when: manual
+    - if: '$FORCE_DEPLOY == "true"'
+      when: manual
+
+deploy-production:
+  <<:                     *deploy
+  stage:                  deploy-polkadot
+  environment:
+    name:                 parity-chains-polkadot
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'       # i.e. v1.0, v2.1rc1
+      when: manual
+    - if: '$FORCE_DEPLOY == "true"'
+      when: manual
