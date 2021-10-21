@@ -77,7 +77,6 @@ stages:
 .deploy:                  &deploy
   image:                  paritytech/kubetools:3.5.3
   script:
-    - "kubectl create namespace $KUBE_NAMESPACE || true"
     - "cat ./kubernetes/deployment.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
     - "kubectl wait -n $KUBE_NAMESPACE --for=condition=available --timeout=60s deployment/$CI_PROJECT_NAME"
   tags:
