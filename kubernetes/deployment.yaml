@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: $CI_PROJECT_NAME-config
+  name: "$RELAYCHAIN-parachain-exporter-config"
 data:
   PORT: "8080"
   WS_PROVIDER: "$WS_PROVIDER"
@@ -11,25 +11,25 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: $CI_PROJECT_NAME
+  name: "$RELAYCHAIN-parachain-exporter"
   labels:
-    app: $CI_PROJECT_NAME
+    app: "$RELAYCHAIN-parachain-exporter"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: $CI_PROJECT_NAME
+      app: "$RELAYCHAIN-parachain-exporter"
   template:
     metadata:
       labels:
-        app: $CI_PROJECT_NAME
+        app: "$RELAYCHAIN-parachain-exporter"
     spec:
       containers:
         envFrom:
           - configMapRef:
-              name: $CI_PROJECT_NAME-config
+              name: "$RELAYCHAIN-parachain-exporter-config"
         image: "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
-        name: $CI_PROJECT_NAME
+        name: "$RELAYCHAIN-parachain-exporter"
         ports:
         - containerPort: 8080
           name: exporter

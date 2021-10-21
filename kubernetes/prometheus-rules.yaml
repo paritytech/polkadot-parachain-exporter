@@ -2,11 +2,11 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: $CI_PROJECT_NAME
+  name: '$RELAYCHAIN-parachain-exporter-monitor'
 spec:
   selector:
     matchLabels:
-      app: $CI_PROJECT_NAME
+      app: '$RELAYCHAIN-parachain-exporter'
   podMetricsEndpoints:
   - port: exporter
     interval: 1s
