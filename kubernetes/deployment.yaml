@@ -25,24 +25,18 @@ spec:
         app: "$RELAYCHAIN-parachain-exporter"
     spec:
       containers:
-        envFrom:
-          - configMapRef:
-              name: "$RELAYCHAIN-parachain-exporter-config"
-        image: "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
-        name: "$RELAYCHAIN-parachain-exporter"
-        ports:
-        - containerPort: 8080
-          name: exporter
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: exporter
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "10m"
-          limits:
-            memory: "1Gi"
-            cpu: "250m"
+        - name: "$RELAYCHAIN-parachain-exporter"
+          image: "$CONTAINER_REPO:$DOCKER_IMAGE_TAG"
+          envFrom:
+            - configMapRef:
+                name: "$RELAYCHAIN-parachain-exporter-config"
+          ports:
+            - containerPort: 8080
+              name: exporter
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "10m"
+            limits:
+              memory: "1Gi"
+              cpu: "250m"
