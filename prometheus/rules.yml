@@ -1,0 +1,41 @@
+- name: parachain-exporter.rules
+  rules:
+    - alert: RelayFinalizationPause
+      expr: 'rate($METRICS_PREFIX_relaychain_finalized_head_number[5m]) <= bool 0'
+      for: 20s
+      labels:
+        severity: critical
+      annotations:
+        summary: 'Finalized block on {{ $labels.chain }} has not increased for more than five minutes'
+
+    - alert: RelayFinalizationLag
+      expr: '$METRICS_PREFIX_relaychain_best_block_number - ple_relaychain_finalized_head_number > bool 50'
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: 'Gap between best and finalized block on {{ $labels.chain }} has been larger than 50 for more than five minutes'
+
+    - alert: ParachainProductionPause
+      expr: 'rate($METRICS_PREFIX_parachain_best_block_number[5m]) <= bool 0'
+      for: 20s
+      labels:
+        severity: critical
+      annotations:
+        summary: 'Best block of {{ $labels.chain }} parachain {{ $labels.para_id }} has not changed for more than five minutes'
+
+    - alert: MajorSlashing
+      expr: '$METRICS_PREFIX_relaychain_active_era_slashes_total > bool $SLASHING_THRESHOLD'
+      for: 20s
+      labels:
+        severity: critical
+      annotations:
+        summary: 'Major slashing has occured in the active era on {{ $labels.chain }}'
+
+    - alert: ParachainLeaseExpiring
+      expr: '$METRICS_PREFIX_parachain_final_lease_period == 1'
+      for: 20s
+      labels:
+        severity: critical
+      annotations:
+        summary: 'The lease of {{ $labels.chain }} parachain {{ $labels.para_id }} will expire after the current lease period'
