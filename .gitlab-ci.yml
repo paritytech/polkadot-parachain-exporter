@@ -116,7 +116,7 @@ deploy-kusama:
     - if: '$FORCE_DEPLOY == "true"'
       when: manual
 
-#deploy-production:
+#deploy-polkadot:
 #  <<:                     *deploy
 #  stage:                  deploy-polkadot
 #  environment:
