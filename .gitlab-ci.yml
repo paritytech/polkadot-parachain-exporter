@@ -25,10 +25,11 @@ default:
       fi
 
 stages:
+  - test
   - build
   - deploy-westend
   - deploy-kusama
-  - deploy-polkadot
+#  - deploy-polkadot
 
 # Pipeline Job Templates:
 .dockerize:               &dockerize
@@ -85,6 +86,17 @@ stages:
 
 
 # Pipeline Jobs:
+test:
+  image: paritytech/tools:latest
+  tags:
+    - kubernetes-parity-build
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - ./prometheus/rules.yml
+  script:
+    - promtool check rules ./prometheus/rules.yml
+
 build:
   <<:                     *dockerize
 
