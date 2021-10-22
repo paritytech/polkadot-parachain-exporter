@@ -78,6 +78,7 @@ stages:
   image:                  paritytech/kubetools:3.5.3
   script:
     - "cat ./kubernetes/deployment.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
+    - "cat ./kubernetes/prometheus-rules.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
     - "kubectl wait -n $KUBE_NAMESPACE --for=condition=available --timeout=60s deployment/$RELAYCHAIN-parachain-exporter"
   tags:
     - kubernetes-parity-build
