@@ -10,7 +10,7 @@ groups:
         summary: 'Finalized block on {{ $labels.chain }} has not increased for more than five minutes'
 
     - alert: RelayFinalizationLag
-      expr: '${METRICS_PREFIX}_relaychain_best_block_number - ple_relaychain_finalized_head_number > bool 50'
+      expr: '${METRICS_PREFIX}_relaychain_best_block_number - ${METRICS_PREFIX}_relaychain_finalized_head_number > bool 50'
       for: 5m
       labels:
         severity: critical

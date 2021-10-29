@@ -99,7 +99,9 @@ test:
         - .gitlab-ci.yml
         - ./prometheus/rules.yml
   script:
-    - "cat ./prometheus/rules.yml | envsubst > ./rules.tmp.yml && promtool check rules rules.tmp.yml"
+    - "cat ./prometheus/rules.yml | envsubst > ./prometheus/rules.local.yml"
+    -  "promtool check rules ./prometheus/rules.local.yml"
+    -  "promtool test rules ./prometheus/tests.yml"
 
 build:
   <<:                     *dockerize

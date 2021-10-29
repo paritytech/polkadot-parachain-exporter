@@ -1,0 +1,86 @@
+rule_files:
+  - rules.local.yml
+
+evaluation_interval: 1s
+
+# TODO: figure out how to test alerts that reference more than one metric (e.g. RelayFinalizationLag)
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'ple_relaychain_finalized_head_number{chain="westend"}'
+        values: '42 42 42 42 42 42'
+
+      - series: 'ple_parachain_best_block_number{chain="westend",para_id="1000"}'
+        values: '42 42 42 42 42 42'
+
+      - series: 'ple_relaychain_active_era_slashes_total{chain="westend"}'
+        values: '101 101 101 0 0 0'
+
+      - series: 'ple_parachain_final_lease_period{chain="westend",para_id="1000"}'
+        values: '1 1 1 1 1 1'
+
+
+    promql_expr_test:
+      - expr: 'rate(ple_relaychain_finalized_head_number[5m]) <= bool 0'
+        eval_time: 6m
+        exp_samples:
+          - labels: '{chain="westend"}'
+            value: 1
+
+      - expr: 'rate(ple_parachain_best_block_number[5m]) <= bool 0'
+        eval_time: 6m
+        exp_samples:
+          - labels: '{chain="westend",para_id="1000"}'
+            value: 1
+
+      - expr: 'ple_relaychain_active_era_slashes_total > bool 100'
+        eval_time: 21s
+        exp_samples:
+          - labels: '{chain="westend"}'
+            value: 1
+
+      - expr: 'ple_parachain_final_lease_period == 1'
+        eval_time: 21s
+        exp_samples:
+          - labels: '{__name__="ple_parachain_final_lease_period",chain="westend",para_id="1000"}'
+            value: 1
+
+
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: RelayFinalizationPause
+        exp_alerts:
+          - exp_labels:
+              chain: westend
+              severity: critical
+            exp_annotations:
+              summary: 'Finalized block on westend has not increased for more than five minutes'
+
+      - eval_time: 6m
+        alertname: ParachainProductionPause
+        exp_alerts:
+          - exp_labels:
+              chain: westend
+              para_id: 1000
+              severity: critical
+            exp_annotations:
+              summary: 'Best block of westend parachain 1000 has not changed for more than five minutes'
+
+      - eval_time: 21s
+        alertname: MajorSlashing
+        exp_alerts:
+          - exp_labels:
+              chain: westend
+              severity: critical
+            exp_annotations:
+              summary: 'Major slashing has occured in the active era on westend'
+
+      - eval_time: 21s
+        alertname: ParachainLeaseExpiring
+        exp_alerts:
+          - exp_labels:
+              chain: westend
+              para_id: 1000
+              severity: critical
+            exp_annotations:
+              summary: 'The lease of westend parachain 1000 will expire after the current lease period'
