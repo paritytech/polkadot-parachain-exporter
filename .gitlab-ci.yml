@@ -82,7 +82,7 @@ stages:
     - "cat ./kubernetes/deployment.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
     - "cat ./kubernetes/prometheus-rules.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
     - "./scripts/render_local_prometheus_rules.sh"
-    - 'kubectl -n $KUBE_NAMESPACE patch prometheusrule parachain-alerting --type=merge --patch $(cat ./prometheus/rules.local.yml)'
+    - 'kubectl -n $KUBE_NAMESPACE patch prometheusrule parachain-alerting --type=merge --patch "$(cat ./prometheus/rules.local.yml)"'
     - "kubectl wait -n $KUBE_NAMESPACE --for=condition=available --timeout=60s deployment/$RELAYCHAIN-parachain-exporter"
   tags:
     - kubernetes-parity-build
