@@ -4,6 +4,7 @@ variables:
   VAULT_SERVER_URL:           "https://vault.parity-mgmt-vault.parity.io"
   VAULT_AUTH_PATH:            "gitlab-parity-io-jwt"
   VAULT_AUTH_ROLE:            "cicd_gitlab_parity_${CI_PROJECT_NAME}"
+  METRICS_PREFIX:             "ple"
 
   # Manual Variables (Optional)
   ## Could be used in the web console when triggering the pipeline manually
@@ -25,10 +26,11 @@ default:
       fi
 
 stages:
+  - test
   - build
   - deploy-westend
   - deploy-kusama
-  - deploy-polkadot
+#  - deploy-polkadot
 
 # Pipeline Job Templates:
 .dockerize:               &dockerize
@@ -79,12 +81,29 @@ stages:
   script:
     - "cat ./kubernetes/deployment.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
     - "cat ./kubernetes/prometheus-rules.yaml | envsubst | kubectl apply -n $KUBE_NAMESPACE -f -"
+    - 'kubectl -n $KUBE_NAMESPACE patch prometheusrule parachain-alerting --type=merge --patch "$(cat ./prometheus/rules.yml | envsubst)"'
     - "kubectl wait -n $KUBE_NAMESPACE --for=condition=available --timeout=60s deployment/$RELAYCHAIN-parachain-exporter"
   tags:
     - kubernetes-parity-build
 
 
 # Pipeline Jobs:
+test:
+  image: paritytech/tools:latest
+  tags:
+    - kubernetes-parity-build
+  variables:
+    SLASHING_THRESHOLD: '100'
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - ./prometheus/rules.yml
+        - ./scripts/render_local_prometheus_rules.sh
+  script:
+    - "./scripts/render_local_prometheus_rules.sh"
+    -  "promtool check rules ./prometheus/rules.local.yml"
+    -  "promtool test rules ./prometheus/tests.yml"
+
 build:
   <<:                     *dockerize
 
@@ -97,6 +116,7 @@ deploy-westend:
     RELAYCHAIN: 'westend'
     PARACHAIN_IDS: '[1000]'
     WS_PROVIDER: 'ws://westend-runtime-exporter-node.runtime-exporter:9944'
+    SLASHING_THRESHOLD: '10'
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'       # i.e. v1.0, v2.1rc1
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -110,6 +130,7 @@ deploy-kusama:
     RELAYCHAIN: 'kusama'
     PARACHAIN_IDS: '[1000]'
     WS_PROVIDER: 'ws://kusama-runtime-exporter-node.runtime-exporter:9944'
+    SLASHING_THRESHOLD: '10'
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'       # i.e. v1.0, v2.1rc1
       when: manual
@@ -125,6 +146,7 @@ deploy-kusama:
 #    RELAYCHAIN: 'polkadot'
 #    PARACHAIN_IDS: '[1000]'
 #    WS_PROVIDER: 'ws://polkadot-runtime-exporter-node.runtime-exporter:9944'
+#    SLASHING_THRESHOLD: '100'
 #  rules:
 #    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+.*$/'       # i.e. v1.0, v2.1rc1
 #      when: manual
