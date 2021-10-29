@@ -98,8 +98,9 @@ test:
     - changes:
         - .gitlab-ci.yml
         - ./prometheus/rules.yml
+        - ./scripts/render_local_prometheus_rules.sh
   script:
-    - "cat ./prometheus/rules.yml | envsubst > ./prometheus/rules.local.yml"
+    - "./scripts/render_local_prometheus_rules.sh"
     -  "promtool check rules ./prometheus/rules.local.yml"
     -  "promtool test rules ./prometheus/tests.yml"
 
