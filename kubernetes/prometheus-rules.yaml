@@ -1,6 +1,6 @@
 ---
 apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
+kind: ServiceMonitor
 metadata:
   name: '$RELAYCHAIN-parachain-exporter-monitor'
 spec:
@@ -9,7 +9,7 @@ spec:
       app: '$RELAYCHAIN-parachain-exporter'
   podMetricsEndpoints:
   - port: exporter
-    interval: 1s
+    interval: 45s
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
