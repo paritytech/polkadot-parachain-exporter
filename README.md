@@ -1,5 +1,3 @@
-[![GitLab Status](https://gitlab.parity.io/parity/polkadot-parachain-exporter/badges/master/pipeline.svg)](https://gitlab.parity.io/parity/polkadot-parachain-exporter/pipelines)
-
 # DEPRECATED
 
 Use https://github.com/paritytech/polkadot-introspector instead
